@@ -3,6 +3,7 @@ import { DraggableField } from './components/DraggableField';
 import { BuilderField } from './components/BuilderField';
 import { DropZone } from './components/DropZone';
 import { PreviewField } from './components/PreviewField';
+import { MenuBar } from './components/MenuBar';
 import { FIELD_TYPES } from './components/fieldTypes.jsx';
 
 export default function App() {
@@ -10,6 +11,26 @@ export default function App() {
   const [previewDevice, setPreviewDevice] = useState('web');
   const [activeTab, setActiveTab] = useState('preview');
   const [draggedItemIndex, setDraggedItemIndex] = useState(null);
+  const [savedForms, setSavedForms] = useState([
+    {
+      name: 'Contact Form',
+      schema: [
+        { id: 'text-1', type: 'text', label: 'Full Name', placeholder: 'Enter your full name' },
+        { id: 'text-2', type: 'text', label: 'Email', placeholder: 'Enter your email address' },
+        { id: 'textarea-1', type: 'textarea', label: 'Message', placeholder: 'Enter your message' }
+      ]
+    },
+    {
+      name: 'Registration Form',
+      schema: [
+        { id: 'text-3', type: 'text', label: 'Username', placeholder: 'Choose a username' },
+        { id: 'text-4', type: 'text', label: 'Email', placeholder: 'Enter your email' },
+        { id: 'number-1', type: 'number', label: 'Age', placeholder: 'Enter your age' },
+        { id: 'date-1', type: 'date', label: 'Birth Date' }
+      ]
+    }
+  ]);
+  const [currentFormName, setCurrentFormName] = useState('Untitled Form');
 
   const handleDropOnZone = useCallback((dropIndex, e) => {
     const fieldType = e.dataTransfer.getData('field-type');
@@ -68,65 +89,144 @@ export default function App() {
     }
   };
 
+  const handleSaveForm = (formName, schema) => {
+    const existingIndex = savedForms.findIndex(form => form.name === formName);
+    const newForm = { name: formName, schema: schema };
+    
+    if (existingIndex >= 0) {
+      // Update existing form
+      const updatedForms = [...savedForms];
+      updatedForms[existingIndex] = newForm;
+      setSavedForms(updatedForms);
+    } else {
+      // Add new form
+      setSavedForms(prev => [...prev, newForm]);
+    }
+    
+    setCurrentFormName(formName);
+  };
+
+  const handleUpdateFormName = (newName) => {
+    if (newName.trim() && newName !== currentFormName) {
+      // Find the current form and update its name
+      const currentFormIndex = savedForms.findIndex(form => form.name === currentFormName);
+      if (currentFormIndex >= 0) {
+        const updatedForms = [...savedForms];
+        updatedForms[currentFormIndex] = {
+          ...updatedForms[currentFormIndex],
+          name: newName.trim()
+        };
+        setSavedForms(updatedForms);
+        setCurrentFormName(newName.trim());
+      }
+    }
+  };
+
+  const handleCloneForm = () => {
+    const baseName = currentFormName || 'Untitled Form';
+    let newName = baseName;
+    let counter = 1;
+    
+    // Find a unique name by adding -1, -2, etc.
+    while (savedForms.some(form => form.name === newName)) {
+      newName = `${baseName}-${counter}`;
+      counter++;
+    }
+    
+    const clonedForm = {
+      name: newName,
+      schema: [...formSchema] // Deep copy the schema
+    };
+    
+    setSavedForms(prev => [...prev, clonedForm]);
+    setCurrentFormName(newName);
+  };
+
+  const handleNewForm = () => {
+    setFormSchema([]);
+    setCurrentFormName('Untitled Form');
+  };
+
+  const handleFormSelect = (formName) => {
+    const selectedForm = savedForms.find(form => form.name === formName);
+    if (selectedForm) {
+      setFormSchema(selectedForm.schema);
+      setCurrentFormName(formName);
+    }
+  };
+
   const previewContainerClass = useMemo(() => {
     const base = "h-full p-6 bg-white rounded-lg shadow-inner transition-all duration-300 ease-in-out overflow-y-auto";
     return previewDevice === 'mobile' ? `${base} w-[375px] mx-auto border-4 border-gray-800 rounded-[40px]` : `${base} w-full`;
   }, [previewDevice]);
 
   return (
-    <div className="flex h-screen bg-gray-100 font-sans">
-      <aside className="w-1/4 p-6 bg-gray-50 border-r border-gray-200 overflow-y-auto">
-        <h2 className="text-xl font-bold mb-6 text-gray-800">Form Fields</h2>
-        {Object.keys(FIELD_TYPES).map(type => <DraggableField key={type} type={type} />)}
-      </aside>
+    <div className="flex flex-col h-screen bg-gray-100 font-sans">
+      <MenuBar 
+        savedForms={savedForms}
+        currentFormName={currentFormName}
+        onFormSelect={handleFormSelect}
+        onSaveForm={handleSaveForm}
+        onUpdateFormName={handleUpdateFormName}
+        onCloneForm={handleCloneForm}
+        onNewForm={handleNewForm}
+        formSchema={formSchema}
+      />
+      
+      <div className="flex flex-1 overflow-hidden">
+        <aside className="w-1/4 p-6 bg-gray-50 border-r border-gray-200 overflow-y-auto">
+          <h2 className="text-xl font-bold mb-6 text-gray-800">Form Fields</h2>
+          {Object.keys(FIELD_TYPES).map(type => <DraggableField key={type} type={type} />)}
+        </aside>
 
-      <main className="w-1/2 p-6 overflow-y-auto">
-        <div className="bg-white p-6 rounded-xl shadow-md min-h-full">
-          <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Form Builder</h2>
-          <div className="builder-canvas" onDrop={handleCanvasDrop} onDragOver={handleCanvasDragOver}>
-            <DropZone onDrop={(e) => handleDropOnZone(0, e)} />
-            {formSchema.length === 0 && draggedItemIndex === null ? (
-              <div className="flex items-center justify-center h-64 border-2 border-dashed border-gray-300 rounded-lg pointer-events-none">
-                <p className="text-gray-500">Drop fields here</p>
-              </div>
-            ) : (
-              formSchema.map((field, index) => (
-                <React.Fragment key={field.id}>
-                  <BuilderField field={field} onUpdate={updateField} onRemove={removeField} onDragStart={(e) => handleDragStart(index, e)} onDragEnd={handleDragEnd} isDragging={draggedItemIndex === index} />
-                  <DropZone onDrop={(e) => handleDropOnZone(index + 1, e)} />
-                </React.Fragment>
-              ))
-            )}
-          </div>
-        </div>
-      </main>
-
-      <aside className="w-1/4 p-6 bg-gray-50 border-l border-gray-200 flex flex-col">
-        <div className="flex-shrink-0 mb-4">
-            <div className="flex border-b">
-                <button onClick={() => setActiveTab('preview')} className={`flex-1 py-2 text-sm font-medium ${activeTab === 'preview' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>Preview</button>
-                <button onClick={() => setActiveTab('json')} className={`flex-1 py-2 text-sm font-medium ${activeTab === 'json' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>JSON</button>
-            </div>
-        </div>
-        {activeTab === 'preview' ? (
-          <div className="flex-grow flex flex-col">
-            <div className="flex-shrink-0 flex justify-center items-center mb-4 space-x-2">
-                <button onClick={() => setPreviewDevice('web')} className={`px-3 py-1 text-sm rounded-md ${previewDevice === 'web' ? 'bg-blue-500 text-white' : 'bg-white'}`}>Web</button>
-                <button onClick={() => setPreviewDevice('mobile')} className={`px-3 py-1 text-sm rounded-md ${previewDevice === 'mobile' ? 'bg-blue-500 text-white' : 'bg-white'}`}>Mobile</button>
-            </div>
-            <div className="flex-grow bg-gray-200 p-4 rounded-xl flex items-center justify-center">
-                <div className={previewContainerClass}>
-                    {formSchema.length > 0 ? formSchema.map(field => <PreviewField key={field.id} field={field} />) : <p className="text-center text-gray-500">Preview appears here.</p>}
+        <main className="w-1/2 p-6 overflow-y-auto">
+          <div className="bg-white p-6 rounded-xl shadow-md min-h-full">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Form Builder</h2>
+            <div className="builder-canvas" onDrop={handleCanvasDrop} onDragOver={handleCanvasDragOver}>
+              <DropZone onDrop={(e) => handleDropOnZone(0, e)} />
+              {formSchema.length === 0 && draggedItemIndex === null ? (
+                <div className="flex items-center justify-center h-64 border-2 border-dashed border-gray-300 rounded-lg pointer-events-none">
+                  <p className="text-gray-500">Drop fields here</p>
                 </div>
+              ) : (
+                formSchema.map((field, index) => (
+                  <React.Fragment key={field.id}>
+                    <BuilderField field={field} onUpdate={updateField} onRemove={removeField} onDragStart={(e) => handleDragStart(index, e)} onDragEnd={handleDragEnd} isDragging={draggedItemIndex === index} />
+                    <DropZone onDrop={(e) => handleDropOnZone(index + 1, e)} />
+                  </React.Fragment>
+                ))
+              )}
             </div>
           </div>
-        ) : (
-          <div className="flex-grow flex flex-col">
-            <h3 className="text-lg font-bold mb-2 text-gray-800">Form Schema (JSON)</h3>
-            <textarea value={JSON.stringify(formSchema, null, 2)} onChange={handleJsonChange} className="w-full flex-grow p-4 border rounded-md font-mono text-sm bg-gray-900 text-green-400" aria-label="Form JSON Schema" />
+        </main>
+
+        <aside className="w-1/4 p-6 bg-gray-50 border-l border-gray-200 flex flex-col">
+          <div className="flex-shrink-0 mb-4">
+              <div className="flex border-b">
+                  <button onClick={() => setActiveTab('preview')} className={`flex-1 py-2 text-sm font-medium ${activeTab === 'preview' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>Preview</button>
+                  <button onClick={() => setActiveTab('json')} className={`flex-1 py-2 text-sm font-medium ${activeTab === 'json' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}>JSON</button>
+              </div>
           </div>
-        )}
-      </aside>
+          {activeTab === 'preview' ? (
+            <div className="flex-grow flex flex-col">
+              <div className="flex-shrink-0 flex justify-center items-center mb-4 space-x-2">
+                  <button onClick={() => setPreviewDevice('web')} className={`px-3 py-1 text-sm rounded-md ${previewDevice === 'web' ? 'bg-blue-500 text-white' : 'bg-white'}`}>Web</button>
+                  <button onClick={() => setPreviewDevice('mobile')} className={`px-3 py-1 text-sm rounded-md ${previewDevice === 'mobile' ? 'bg-blue-500 text-white' : 'bg-white'}`}>Mobile</button>
+              </div>
+              <div className="flex-grow bg-gray-200 p-4 rounded-xl flex items-center justify-center">
+                  <div className={previewContainerClass}>
+                      {formSchema.length > 0 ? formSchema.map(field => <PreviewField key={field.id} field={field} />) : <p className="text-center text-gray-500">Preview appears here.</p>}
+                  </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-grow flex flex-col">
+              <h3 className="text-lg font-bold mb-2 text-gray-800">Form Schema (JSON)</h3>
+              <textarea value={JSON.stringify(formSchema, null, 2)} onChange={handleJsonChange} className="w-full flex-grow p-4 border rounded-md font-mono text-sm bg-gray-900 text-green-400" aria-label="Form JSON Schema" />
+            </div>
+          )}
+        </aside>
+      </div>
     </div>
   );
 } 
