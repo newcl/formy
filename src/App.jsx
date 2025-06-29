@@ -162,7 +162,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[1400px] mx-auto">
         {/* Window Container */}
         <div className="bg-white rounded-xl shadow-2xl overflow-hidden border border-gray-200">
           {/* Window Title Bar */}
