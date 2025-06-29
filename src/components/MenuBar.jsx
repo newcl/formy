@@ -59,6 +59,7 @@ export const MenuBar = ({
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       handleSave();
     } else if (e.key === 'Escape') {
       setIsEditing(false);
@@ -100,17 +101,20 @@ export const MenuBar = ({
                 onChange={(e) => setEditValue(e.target.value)}
                 onKeyDown={handleKeyPress}
                 onBlur={handleSave}
-                className="px-4 py-2 border border-blue-500 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-64 px-4 py-2 border border-blue-500 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Enter form name..."
               />
             ) : (
               <button
                 onClick={handleDropdownToggle}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-50 border border-gray-300 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                className="w-64 flex items-center justify-between px-4 py-2 bg-gray-50 border border-gray-300 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               >
                 <span 
-                  className="text-sm font-medium text-gray-700 cursor-text"
-                  onClick={handleDropdownClick}
+                  className="text-sm font-medium text-gray-700 cursor-text truncate flex-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDropdownClick(e);
+                  }}
                 >
                   {currentFormName || 'Untitled Form'}
                 </span>
