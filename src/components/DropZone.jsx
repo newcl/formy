@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export const DropZone = ({ onDrop }) => {
+export const DropZone = ({ onDrop, isLast = false }) => {
     const [isOver, setIsOver] = useState(false);
 
     const handleDragOver = (e) => {
@@ -22,7 +22,13 @@ export const DropZone = ({ onDrop }) => {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`h-2 my-1 transition-all duration-200 ${isOver ? 'bg-blue-400 h-12' : 'bg-transparent'}`}
+            className={`transition-all duration-200 ${
+                isOver 
+                    ? 'bg-blue-400 h-16' 
+                    : isLast 
+                        ? 'h-8 bg-transparent' 
+                        : 'h-4 bg-transparent'
+            }`}
         />
     );
 }; 
